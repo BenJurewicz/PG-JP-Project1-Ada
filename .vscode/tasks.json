@@ -4,22 +4,22 @@
 		{
 			"type": "ada",
 			"compound": [
-				"Build main - src/hello_world.adb",
-				"Run main - src/hello_world.adb"
+				"Build main - src/simulation.adb",
+				"Run main - src/simulation.adb"
 			],
-			"label": "ada: Build and run main - src/hello_world.adb"
+			"label": "ada: Build and run main - src/simulation.adb"
 		},
 		{
             "type": "ada",
-            "label": "Run main - src/hello_world.adb",
-            "command": "obj\\hello_world",
+            "label": "Run main - src/simulation.adb",
+            "command": "obj\\simulation",
         },
 		{
             "type": "ada",
-            "label": "Build main - src/hello_world.adb",
+            "label": "Build main - src/simulation.adb",
             "command": "gprbuild",
             "args": [
-                "-Phello_world.gpr"
+                "-Psimulation.gpr"
             ],
             "group": {
                 "kind": "build",

@@ -3,16 +3,16 @@
     "configurations": [
         {
             "type": "cppdbg",
-            "name": "Ada: Debug main - src/hello_world.adb",
+            "name": "Ada: Debug main - src/simulation.adb",
             "request": "launch",
             "targetArchitecture": "x64",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/obj/hello_world.exe",
+            "program": "${workspaceFolder}/obj/simulation.exe",
             "stopAtEntry": false,
             "externalConsole": false,
             "args": [],
             "MIMode": "gdb",
-            "preLaunchTask": "ada: Build main - src/hello_world.adb",
+            "preLaunchTask": "ada: Build main - src/simulation.adb",
             "setupCommands": [
                 {
                     "description": "Catch all Ada exceptions",

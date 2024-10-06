@@ -1,4 +1,4 @@
 {
-    "ada.projectFile": "hello_world.gpr",
+    "ada.projectFile": "simulation.gpr",
     "sarif-viewer.connectToGithubCodeScanning": "off"
 }
