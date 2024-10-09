@@ -82,6 +82,8 @@ procedure Simulation is
          Put_Line(ESC & "[93m" & "P: Produced product " & Product_Name(Producer_Type_Number)
                   & " number "  & Integer'Image(Product_Number) & ESC & "[0m");
          -- Accept for storage
+         -- TODO if buffer full producer should wait x seconds before retrying to push the producnt do buffer
+         -- TODO reapeat until success
          B.Take(Producer_Type_Number, Product_Number);
          Product_Number := Product_Number + 1;
       end loop;
@@ -190,6 +192,7 @@ procedure Simulation is
       Put_Line(ESC & "[91m" & "B: Buffer started" & ESC & "[0m");
       Setup_Variables;
       loop
+         -- TODO add select for take and deliver
          accept Take(Product: in Producer_Type; Number: in Integer) do
             if Can_Accept(Product) then
                Put_Line(ESC & "[91m" & "B: Accepted product " & Product_Name(Product) & " number " &
