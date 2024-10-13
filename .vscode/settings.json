@@ -1,4 +1,5 @@
 {
-    "ada.projectFile": "simulation.gpr",
-    "sarif-viewer.connectToGithubCodeScanning": "off"
+	"ada.projectFile": "simulation.gpr",
+	"sarif-viewer.connectToGithubCodeScanning": "off",
+	"cSpell.words": ["Gprbuild"]
 }

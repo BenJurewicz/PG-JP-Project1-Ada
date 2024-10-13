@@ -156,8 +156,8 @@ procedure Simulation is
    task body Buffer is
       -- Consumer Stats
       Requested : Float := 0.0;
-      Fullfiled : Float := 0.0;
-      Deniend   : Float := 0.0;
+      Fulfilled : Float := 0.0;
+      Denied    : Float := 0.0;
 
       Storage_Capacity : constant Integer := 30;
       type Storage_type is array (Producer_Type) of Integer;
@@ -168,7 +168,7 @@ procedure Simulation is
       Assembly_Number      : array (Assembly_Type) of Integer := (1, 1, 1);
       In_Storage           : Integer := 0;
 
-      -- Normalizded raiting of how in demand a certain product is (higher the number, higher the demand)
+      -- Normalized rating of how in demand a certain product is (higher the number, higher the demand)
       Product_Demand : array (Producer_Type) of Float;
 
       procedure Set_Product_Demand is
@@ -309,10 +309,10 @@ procedure Simulation is
       begin
          Put ("Success: ");
          Ada.Float_Text_IO.Put
-           (Item => Fullfiled / Requested, Fore => 2, Aft => 2, Exp => 0);
+           (Item => Fulfilled / Requested, Fore => 2, Aft => 2, Exp => 0);
          Put ("  Failure: ");
          Ada.Float_Text_IO.Put
-           (Item => Deniend / Requested, Fore => 2, Aft => 2, Exp => 0);
+           (Item => Denied / Requested, Fore => 2, Aft => 2, Exp => 0);
          Put ("  Total:");
          Ada.Float_Text_IO.Put
            (Item => Requested, Fore => 3, Aft => 0, Exp => 0);
@@ -362,7 +362,7 @@ procedure Simulation is
             do
                Requested := Requested + 1.0;
                if Can_Deliver (Assembly) then
-                  Fullfiled := Fullfiled + 1.0;
+                  Fulfilled := Fulfilled + 1.0;
                   Put_Line
                     (ESC & "[91m" & "B: Delivered assembly " &
                      Assembly_Name (Assembly) & " number " &
@@ -375,7 +375,7 @@ procedure Simulation is
                   Number                     := Assembly_Number (Assembly);
                   Assembly_Number (Assembly) := Assembly_Number (Assembly) + 1;
                else
-                  Deniend := Deniend + 1.0;
+                  Denied := Denied + 1.0;
                   Put_Line
                     (ESC & "[91m" & "B: Lacking products for assembly " &
                      Assembly_Name (Assembly) & ESC & "[0m");
