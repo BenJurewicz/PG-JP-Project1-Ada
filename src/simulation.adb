@@ -5,6 +5,8 @@ with Ada.Characters.Latin_1; use Ada.Characters.Latin_1;
 with Ada.Integer_Text_IO;
 with Ada.Numerics.Discrete_Random;
 
+with Ada.Float_Text_IO;
+
 procedure Simulation is
 
    ----GLOBAL VARIABLES---
@@ -137,6 +139,11 @@ procedure Simulation is
    --Buffer--
 
    task body Buffer is
+      -- Consumer Stats
+      Requested : Float := 0.0;
+      Fullfiled : Float := 0.0;
+      Deniend   : Float := 0.0;
+
       Storage_Capacity : constant Integer := 30;
       type Storage_type is array (Producer_Type) of Integer;
       Storage              : Storage_type := (0, 0, 0, 0, 0);
@@ -177,6 +184,20 @@ procedure Simulation is
          return True;
       end Can_Deliver;
 
+      procedure Consumer_Stats is
+      begin
+         Put ("Success: ");
+         Ada.Float_Text_IO.Put
+           (Item => Fullfiled / Requested, Fore => 2, Aft => 2, Exp => 0);
+         Put ("  Failure: ");
+         Ada.Float_Text_IO.Put
+           (Item => Deniend / Requested, Fore => 2, Aft => 2, Exp => 0);
+         Put ("  Total:");
+         Ada.Float_Text_IO.Put
+           (Item => Requested, Fore => 3, Aft => 0, Exp => 0);
+         Put_Line ("");
+      end Consumer_Stats;
+
       procedure Storage_Contents is
       begin
          for W in Producer_Type loop
@@ -187,7 +208,7 @@ procedure Simulation is
          Put_Line
            ("|   Number of products in storage: " &
             Integer'Image (In_Storage));
-
+         Consumer_Stats;
       end Storage_Contents;
 
    begin
@@ -214,7 +235,9 @@ procedure Simulation is
          or
             accept Deliver (Assembly : in Assembly_Type; Number : out Integer)
             do
+               Requested := Requested + 1.0;
                if Can_Deliver (Assembly) then
+                  Fullfiled := Fullfiled + 1.0;
                   Put_Line
                     (ESC & "[91m" & "B: Delivered assembly " &
                      Assembly_Name (Assembly) & " number " &
@@ -227,6 +250,7 @@ procedure Simulation is
                   Number                     := Assembly_Number (Assembly);
                   Assembly_Number (Assembly) := Assembly_Number (Assembly) + 1;
                else
+                  Deniend := Deniend + 1.0;
                   Put_Line
                     (ESC & "[91m" & "B: Lacking products for assembly " &
                      Assembly_Name (Assembly) & ESC & "[0m");
