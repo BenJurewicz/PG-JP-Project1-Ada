@@ -111,6 +111,25 @@ procedure Simulation is
       Consumer_Name   :
         constant array (1 .. Number_Of_Consumers) of String (1 .. 9) :=
         ("Consumer1", "Consumer2");
+
+      procedure Consume_Assembly (Assembly_Type : Integer) is
+      begin
+         Assembly_Number := 0;
+         B.Deliver (Assembly_Type, Assembly_Number);
+         if Assembly_Number = 0 then
+            Put_Line
+              (ESC & "[96m" & "C: " & Consumer_Name (Consumer_Nb) &
+               " didn't receive assembly " & Assembly_Name (Assembly_Type) &
+               ESC & "[0m");
+            delay 1.0;
+         else
+            Put_Line
+              (ESC & "[96m" & "C: " & Consumer_Name (Consumer_Nb) &
+               " takes assembly " & Assembly_Name (Assembly_Type) &
+               " number " & Integer'Image (Assembly_Number) & ESC & "[0m");
+         end if;
+      end Consume_Assembly;
+
    begin
       accept Start
         (Consumer_Number : in Consumer_Type; Consumption_Time : in Integer)
@@ -128,11 +147,7 @@ procedure Simulation is
            (Random_Consumption.Random (G)); --  simulate consumption
          Assembly_Type := Random_Assembly.Random (GA);
          -- take an assembly for consumption
-         B.Deliver (Assembly_Type, Assembly_Number);
-         Put_Line
-           (ESC & "[96m" & "C: " & Consumer_Name (Consumer_Nb) &
-            " takes assembly " & Assembly_Name (Assembly_Type) & " number " &
-            Integer'Image (Assembly_Number) & ESC & "[0m");
+         Consume_Assembly (Assembly_Type);
       end loop;
    end Consumer;
 

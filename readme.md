@@ -14,7 +14,7 @@ Info src:
 
 ## Tasks
 
--   [ ] Consumer should handle not receiving a assembly
+-   [x] Consumer should handle not receiving a assembly
 -   [ ] Producer should handle not being able to put something into Buffer
 -   [ ] Balance Buffer
 -   [ ] Implement Furious_Worker as specified in the instruction
