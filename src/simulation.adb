@@ -168,6 +168,30 @@ procedure Simulation is
       Assembly_Number      : array (Assembly_Type) of Integer := (1, 1, 1);
       In_Storage           : Integer := 0;
 
+      -- Normalizded raiting of how in demand a certain product is (higher the number, higher the demand)
+      Product_Demand : array (Producer_Type) of Float;
+
+      procedure Set_Product_Demand is
+         Sum_Producer_Demand : Integer := 0;
+         Sum                 : Float   := 0.0;
+      begin
+         for W in Producer_Type loop
+            Product_Demand (W) := 0.0;
+            for Z in Assembly_Type loop
+               Product_Demand (W)  :=
+                 Product_Demand (W) + Float (Assembly_Content (Z, W));
+               Sum_Producer_Demand :=
+                 Sum_Producer_Demand + Assembly_Content (Z, W);
+            end loop;
+         end loop;
+
+         for W in Producer_Type loop
+            Product_Demand (W) :=
+              (Product_Demand (W) / Float (Sum_Producer_Demand));
+            Sum                := Sum + Product_Demand (W);
+         end loop;
+      end Set_Product_Demand;
+
       procedure Setup_Variables is
       begin
          for W in Producer_Type loop
@@ -178,14 +202,96 @@ procedure Simulation is
                end if;
             end loop;
          end loop;
+         Set_Product_Demand;
       end Setup_Variables;
 
-      function Can_Accept (Product : Producer_Type) return Boolean is
+      function Product_Storage_Weight (Product : Producer_Type) return Float is
+         function Calc_Weight (x : Float) return Float is
+            -- https://www.desmos.com/calculator/tynm88glpq
+
+            -- Storage_Capacity casted to float
+            cap   : constant Float := Float (Storage_Capacity);
+            -- How much to shift the equation (used to shape the weight calculation curve)
+            shift : constant Float := 0.1;
+
+            function Weight_Equation (x : Float) return Float is
+            begin
+               return (cap - x - shift) / (x + shift);
+            end Weight_Equation;
+
+            -- Max and Min over function range (0 to Storage_Capacity)
+            -- (used for normalization)
+            max : constant Float := Weight_Equation (0.0);
+            min : constant Float := Weight_Equation (cap);
+
+            function Normalize (value : Float) return Float is
+            begin
+               return (value - min) / (max - min);
+            end Normalize;
+
+            Product_In_Storage : Float := Float (Storage (Product));
+         begin
+            return Normalize (Weight_Equation (Product_In_Storage));
+         end Calc_Weight;
+
+         InStorageWeight : Float;
       begin
-         if In_Storage >= Storage_Capacity then
-            return False;
-         else
+         InStorageWeight := Calc_Weight (Float (Storage (Product)));
+         return InStorageWeight * Product_Demand (Product);
+      end Product_Storage_Weight;
+
+      function Can_Accept_After_Remove
+        (Product : Producer_Type; IndexToRemove : out Producer_Type)
+         return Boolean
+      is
+         type Weights_Array_Type is array (Producer_Type) of Float;
+         Products_Weights : Weights_Array_Type;
+
+         function Min_Weight_Index
+           (Weights : Weights_Array_Type) return Producer_Type
+         is
+            MinIndex : Producer_Type;
+         begin
+            -- Find first removable item
+            for P in Producer_Type loop
+               -- Since this function gets called only when Storage is full we can be sure that at least one value is non zero
+               if Storage (P) /= 0 then
+                  MinIndex := P;
+                  exit;
+               end if;
+            end loop;
+            -- Find the least needed item
+            for P in Producer_Type loop
+               if Weights (P) < Weights (MinIndex) and then Storage (P) /= 0
+               then
+                  MinIndex := P;
+               end if;
+            end loop;
+            return MinIndex;
+         end Min_Weight_Index;
+
+      begin
+         for W in Producer_Type loop
+            Products_Weights (W) := Product_Storage_Weight (W);
+         end loop;
+         IndexToRemove := Min_Weight_Index (Products_Weights);
+         return (IndexToRemove /= Product);
+      end Can_Accept_After_Remove;
+
+      function Can_Accept (Product : Producer_Type) return Boolean is
+         IndexToRemove : Producer_Type;
+      begin
+         if In_Storage < Storage_Capacity then
             return True;
+         elsif Can_Accept_After_Remove (Product, IndexToRemove) then
+            Storage (IndexToRemove) := Storage (IndexToRemove) - 1;
+            In_Storage              := In_Storage - 1;
+            Put_Line
+              (ESC & "[91m" & "B: Removed product " &
+               Product_Name (IndexToRemove) & " from storage " & ESC & "[0m");
+            return True;
+         else
+            return False;
          end if;
       end Can_Accept;
 
@@ -216,9 +322,13 @@ procedure Simulation is
       procedure Storage_Contents is
       begin
          for W in Producer_Type loop
-            Put_Line
-              ("|   Storage contents: " & Integer'Image (Storage (W)) & " " &
-               Product_Name (W));
+            Put ("|   Storage contents: ");
+            Ada.Integer_Text_IO.Put (Storage (W), 2);
+            Put (" " & Product_Name (W) & " Weight: ");
+            Ada.Float_Text_IO.Put
+              (Item => Product_Storage_Weight (W), Fore => 1, Aft => 4,
+               Exp  => 0);
+            Put_Line ("");
          end loop;
          Put_Line
            ("|   Number of products in storage: " &
