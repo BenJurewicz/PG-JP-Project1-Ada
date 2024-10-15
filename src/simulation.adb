@@ -11,13 +11,15 @@ procedure Simulation is
 
    ----GLOBAL VARIABLES---
 
-   Number_Of_Producers  : constant Integer := 5;
-   Number_Of_Assemblies : constant Integer := 3;
-   Number_Of_Consumers  : constant Integer := 2;
+   Number_Of_Producers       : constant Integer := 5;
+   Number_Of_Assemblies      : constant Integer := 3;
+   Number_Of_Consumers       : constant Integer := 2;
+   Number_Of_Furious_Workers : constant Integer := 1;
 
    subtype Producer_Type is Integer range 1 .. Number_Of_Producers;
    subtype Assembly_Type is Integer range 1 .. Number_Of_Assemblies;
    subtype Consumer_Type is Integer range 1 .. Number_Of_Consumers;
+   subtype Furious_Worker_Type is Integer range 1 .. Number_Of_Furious_Workers;
 
    --each Producer is assigned a Product that it produces
    Product_Name  : constant array (Producer_Type) of String (1 .. 8) :=
@@ -25,6 +27,10 @@ procedure Simulation is
    --Assembly is a collection of products
    Assembly_Name : constant array (Assembly_Type) of String (1 .. 9) :=
      ("Assembly1", "Assembly2", "Assembly3");
+
+   Furious_Worker_Name :
+     constant array (Furious_Worker_Type) of String (1 .. 8) :=
+     (1 => "Furious1");
 
    ----TASK DECLARATIONS----
 
@@ -40,16 +46,26 @@ procedure Simulation is
         (Consumer_Number : in Consumer_Type; Consumption_Time : in Integer);
    end Consumer;
 
+   -- Furious_Worker gets angry randomly and destroys products in buffer
+   task type Furious_Worker is
+      entry Start
+        (Furious_Worker_Number : Furious_Worker_Type;
+         Fury_Threshold_Arg    : Integer);
+   end Furious_Worker;
+
    -- Buffer receives products from Producers and delivers Assemblies to Consumers
    task type Buffer is
       -- Accept a product to the storage (provided there is a room for it)
       entry Take (Product : in Producer_Type; Number : in Integer);
       -- Deliver an assembly (provided there are enough products for it)
       entry Deliver (Assembly : in Assembly_Type; Number : out Integer);
+      -- Half the amount of every product type
+      entry Quarrel_In_Storage (Worker_Number : Furious_Worker_Type);
    end Buffer;
 
    P : array (1 .. Number_Of_Producers) of Producer;
    K : array (1 .. Number_Of_Consumers) of Consumer;
+   W : array (1 .. Number_Of_Furious_Workers) of Furious_Worker;
    B : Buffer;
 
    ----TASK DEFINITIONS----
@@ -151,6 +167,39 @@ procedure Simulation is
       end loop;
    end Consumer;
 
+   --Furious_Worker--
+
+   task body Furious_Worker is
+      subtype Fury_Range is Integer range 1 .. 10;
+      package Random_Fury_Level is new Ada.Numerics.Discrete_Random
+        (Fury_Range);
+
+      G : Random_Fury_Level.Generator;
+
+      Fury_Level     : Integer;
+      Worker_Number  : Integer;
+      Fury_Threshold : Integer;
+   begin
+      accept Start
+        (Furious_Worker_Number : Furious_Worker_Type;
+         Fury_Threshold_Arg    : Integer)
+      do
+         Worker_Number  := Furious_Worker_Number;
+         Fury_Threshold := Fury_Threshold_Arg;
+      end Start;
+      loop
+         delay 5.0;
+         Fury_Level := Random_Fury_Level.Random (G);
+         if Fury_Level > Fury_Threshold then
+            Put_Line
+              (ESC & "[35m" & "W: Furious worker " &
+               Furious_Worker_Name (Worker_Number) & " reached fury level " &
+               Fury_Level'Image & ESC & "[0m");
+            B.Quarrel_In_Storage (Worker_Number);
+         end if;
+      end loop;
+   end Furious_Worker;
+
    --Buffer--
 
    task body Buffer is
@@ -247,9 +296,22 @@ procedure Simulation is
          type Weights_Array_Type is array (Producer_Type) of Float;
          Products_Weights : Weights_Array_Type;
 
-         function Min_Weight_Index
+         function Select_For_Removal
            (Weights : Weights_Array_Type) return Producer_Type
          is
+            function Should_Remove
+              (P : Producer_Type; MinIndex : Producer_Type) return Boolean
+            is
+            begin
+               -- Selects for the product with the following conditions
+               --    - has the lowest possible weight
+               --    - there is more of it in storage than 0
+               --    - we have more of it than is required to fullfil any given assembly
+               return
+                 Weights (P) < Weights (MinIndex) and then Storage (P) > 0
+                 and then Storage (P) > Max_Assembly_Content (P);
+            end Should_Remove;
+
             MinIndex : Producer_Type;
          begin
             -- Find first removable item
@@ -262,19 +324,18 @@ procedure Simulation is
             end loop;
             -- Find the least needed item
             for P in Producer_Type loop
-               if Weights (P) < Weights (MinIndex) and then Storage (P) /= 0
-               then
+               if Should_Remove (P, MinIndex) then
                   MinIndex := P;
                end if;
             end loop;
             return MinIndex;
-         end Min_Weight_Index;
+         end Select_For_Removal;
 
       begin
          for W in Producer_Type loop
             Products_Weights (W) := Product_Storage_Weight (W);
          end loop;
-         IndexToRemove := Min_Weight_Index (Products_Weights);
+         IndexToRemove := Select_For_Removal (Products_Weights);
          return (IndexToRemove /= Product);
       end Can_Accept_After_Remove;
 
@@ -336,6 +397,14 @@ procedure Simulation is
          Consumer_Stats;
       end Storage_Contents;
 
+      procedure Throwing_Products is
+      begin
+         for P in Producer_Type loop
+            -- Integer division rounding down
+            Storage (P) := (Storage (P) + 1) / 2;
+         end loop;
+      end Throwing_Products;
+
    begin
       Put_Line (ESC & "[91m" & "B: Buffer started" & ESC & "[0m");
       Setup_Variables;
@@ -383,6 +452,16 @@ procedure Simulation is
                end if;
             end Deliver;
             Storage_Contents;
+         or
+            accept Quarrel_In_Storage (Worker_Number : Furious_Worker_Type) do
+               Throwing_Products;
+               Put_Line
+                 (ESC & "[91m" & "B: After " &
+                  Furious_Worker_Name (Worker_Number) &
+                  "'s fury, we lost half of the products in the storage" &
+                  ESC & "[0m");
+            end Quarrel_In_Storage;
+            Storage_Contents;
          end select;
       end loop;
    end Buffer;
@@ -394,5 +473,8 @@ begin
    end loop;
    for J in 1 .. Number_Of_Consumers loop
       K (J).Start (J, 12);
+   end loop;
+   for K in 1 .. Number_Of_Furious_Workers loop
+      W (K).Start (K, 1);
    end loop;
 end Simulation;
