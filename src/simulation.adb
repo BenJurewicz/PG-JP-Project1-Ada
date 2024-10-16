@@ -63,14 +63,13 @@ procedure Simulation is
       entry Quarrel_In_Storage (Worker_Number : Furious_Worker_Type);
    end Buffer;
 
+   --Producer--
    P : array (1 .. Number_Of_Producers) of Producer;
    K : array (1 .. Number_Of_Consumers) of Consumer;
    W : array (1 .. Number_Of_Furious_Workers) of Furious_Worker;
    B : Buffer;
 
    ----TASK DEFINITIONS----
-
-   --Producer--
 
    task body Producer is
       subtype Production_Time_Range is Integer range 1 .. 3;
@@ -222,7 +221,6 @@ procedure Simulation is
 
       procedure Set_Product_Demand is
          Sum_Producer_Demand : Integer := 0;
-         Sum                 : Float   := 0.0;
       begin
          for W in Producer_Type loop
             Product_Demand (W) := 0.0;
@@ -237,7 +235,6 @@ procedure Simulation is
          for W in Producer_Type loop
             Product_Demand (W) :=
               (Product_Demand (W) / Float (Sum_Producer_Demand));
-            Sum                := Sum + Product_Demand (W);
          end loop;
       end Set_Product_Demand;
 
@@ -399,9 +396,11 @@ procedure Simulation is
 
       procedure Throwing_Products is
       begin
+         In_Storage := 0;
          for P in Producer_Type loop
             -- Integer division rounding down
             Storage (P) := (Storage (P) + 1) / 2;
+            In_Storage  := In_Storage + Storage (P);
          end loop;
       end Throwing_Products;
 
@@ -475,6 +474,6 @@ begin
       K (J).Start (J, 12);
    end loop;
    for K in 1 .. Number_Of_Furious_Workers loop
-      W (K).Start (K, 1);
+      W (K).Start (K, 8);
    end loop;
 end Simulation;
