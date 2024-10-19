@@ -22,15 +22,16 @@ procedure Simulation is
    subtype Furious_Worker_Type is Integer range 1 .. Number_Of_Furious_Workers;
 
    --each Producer is assigned a Product that it produces
-   Product_Name  : constant array (Producer_Type) of String (1 .. 8) :=
-     ("Product1", "Product2", "Product3", "Product4", "Product5");
+   Product_Name  : constant array (Producer_Type) of String (1 .. 11) :=
+     ("Hot peppers", "Cheese     ", "Bun        ", "Lettuce    ",
+      "Beef Patty ");
    --Assembly is a collection of products
-   Assembly_Name : constant array (Assembly_Type) of String (1 .. 9) :=
-     ("Assembly1", "Assembly2", "Assembly3");
+   Assembly_Name : constant array (Assembly_Type) of String (1 .. 20) :=
+     ("Classic Cheeseburger", "Lettuce Wrap        ", "Spicy Cheeseburger  ");
 
    Furious_Worker_Name :
      constant array (Furious_Worker_Type) of String (1 .. 8) :=
-     (1 => "Furious1");
+     (1 => "Johnny  ");
 
    ----TASK DECLARATIONS----
 
@@ -379,7 +380,7 @@ procedure Simulation is
 
       procedure Print_Weight (P : Producer_Type) is
       begin
-         Put (" " & Product_Name (P) & " Weight: ");
+         Put (" Weight: ");
          Ada.Float_Text_IO.Put
            (Item => Product_Storage_Weight (P), Fore => 1, Aft => 4, Exp => 0);
       end Print_Weight;
@@ -389,6 +390,7 @@ procedure Simulation is
          for P in Producer_Type loop
             Put ("|   Storage contents: ");
             Ada.Integer_Text_IO.Put (Storage (P), 2);
+            Put (" " & Product_Name (P));
             --  Print_Weight (P);
             Put_Line ("");
          end loop;
