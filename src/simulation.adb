@@ -204,9 +204,9 @@ procedure Simulation is
 
    task body Buffer is
       -- Consumer Stats
-      Requested : Float := 0.0;
-      Fulfilled : Float := 0.0;
-      Denied    : Float := 0.0;
+      Total_Assembly_Requests  : Float := 0.0;
+      Total_Fulfilled_Requests : Float := 0.0;
+      Total_Denied_Requests    : Float := 0.0;
 
       Storage_Capacity : constant Integer := 30;
       type Storage_type is array (Producer_Type) of Integer;
@@ -366,31 +366,36 @@ procedure Simulation is
 
       procedure Consumer_Stats is
       begin
-         Put ("Success: ");
+         Put ("|   Success: ");
          Ada.Float_Text_IO.Put
-           (Item => Fulfilled / Requested, Fore => 2, Aft => 2, Exp => 0);
+           (Item => Total_Fulfilled_Requests / Total_Assembly_Requests,
+            Fore => 2, Aft => 2, Exp => 0);
          Put ("  Failure: ");
          Ada.Float_Text_IO.Put
-           (Item => Denied / Requested, Fore => 2, Aft => 2, Exp => 0);
-         Put ("  Total:");
-         Put_Line ("  Total:" & Integer (Requested)'Image);
+           (Item => Total_Denied_Requests / Total_Assembly_Requests, Fore => 2,
+            Aft  => 2, Exp => 0);
+         Put_Line ("  Total:" & Integer (Total_Assembly_Requests)'Image);
       end Consumer_Stats;
+
+      procedure Print_Weight (P : Producer_Type) is
+      begin
+         Put (" " & Product_Name (P) & " Weight: ");
+         Ada.Float_Text_IO.Put
+           (Item => Product_Storage_Weight (P), Fore => 1, Aft => 4, Exp => 0);
+      end Print_Weight;
 
       procedure Storage_Contents is
       begin
-         for W in Producer_Type loop
+         for P in Producer_Type loop
             Put ("|   Storage contents: ");
-            Ada.Integer_Text_IO.Put (Storage (W), 2);
-            Put (" " & Product_Name (W) & " Weight: ");
-            Ada.Float_Text_IO.Put
-              (Item => Product_Storage_Weight (W), Fore => 1, Aft => 4,
-               Exp  => 0);
+            Ada.Integer_Text_IO.Put (Storage (P), 2);
+            --  Print_Weight (P);
             Put_Line ("");
          end loop;
          Put_Line
            ("|   Number of products in storage: " &
             Integer'Image (In_Storage));
-         Consumer_Stats;
+         --  Consumer_Stats;
       end Storage_Contents;
 
       procedure Throwing_Products (Worker_Number : Furious_Worker_Type) is
@@ -429,9 +434,9 @@ procedure Simulation is
         (Assembly : in Assembly_Type; Number : out Integer)
       is
       begin
-         Requested := Requested + 1.0;
+         Total_Assembly_Requests := Total_Assembly_Requests + 1.0;
          if Can_Deliver (Assembly) then
-            Fulfilled := Fulfilled + 1.0;
+            Total_Fulfilled_Requests := Total_Fulfilled_Requests + 1.0;
             Put_Line
               (ESC & "[91m" & "B: Delivered assembly " &
                Assembly_Name (Assembly) & " number " &
@@ -443,7 +448,7 @@ procedure Simulation is
             Number                     := Assembly_Number (Assembly);
             Assembly_Number (Assembly) := Assembly_Number (Assembly) + 1;
          else
-            Denied := Denied + 1.0;
+            Total_Denied_Requests := Total_Denied_Requests + 1.0;
             Put_Line
               (ESC & "[91m" & "B: Lacking products for assembly " &
                Assembly_Name (Assembly) & ESC & "[0m");
