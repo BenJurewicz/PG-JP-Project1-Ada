@@ -81,6 +81,7 @@ procedure Simulation is
       Product_Number       : Integer;
       Production           : Integer;
       Random_Time          : Duration;
+
    begin
       accept Start (Product : in Producer_Type; Production_Time : in Integer)
       do
@@ -372,9 +373,7 @@ procedure Simulation is
          Ada.Float_Text_IO.Put
            (Item => Denied / Requested, Fore => 2, Aft => 2, Exp => 0);
          Put ("  Total:");
-         Ada.Float_Text_IO.Put
-           (Item => Requested, Fore => 3, Aft => 0, Exp => 0);
-         Put_Line ("");
+         Put_Line ("  Total:" & Integer (Requested)'Image);
       end Consumer_Stats;
 
       procedure Storage_Contents is
@@ -394,7 +393,7 @@ procedure Simulation is
          Consumer_Stats;
       end Storage_Contents;
 
-      procedure Throwing_Products is
+      procedure Throwing_Products (Worker_Number : Furious_Worker_Type) is
       begin
          In_Storage := 0;
          for P in Producer_Type loop
@@ -402,65 +401,90 @@ procedure Simulation is
             Storage (P) := (Storage (P) + 1) / 2;
             In_Storage  := In_Storage + Storage (P);
          end loop;
+         Put_Line
+           (ESC & "[91m" & "B: After " & Furious_Worker_Name (Worker_Number) &
+            "'s fury, we lost half of the products in the storage" & ESC &
+            "[0m");
+         Storage_Contents;
       end Throwing_Products;
+
+      procedure Handle_Take (Product : in Producer_Type; Number : in Integer)
+      is
+      begin
+         if Can_Accept (Product) then
+            Put_Line
+              (ESC & "[91m" & "B: Accepted product " & Product_Name (Product) &
+               " number " & Integer'Image (Number) & ESC & "[0m");
+            Storage (Product) := Storage (Product) + 1;
+            In_Storage        := In_Storage + 1;
+         else
+            Put_Line
+              (ESC & "[91m" & "B: Rejected product " & Product_Name (Product) &
+               " number " & Integer'Image (Number) & ESC & "[0m");
+         end if;
+         Storage_Contents;
+      end Handle_Take;
+
+      procedure Handle_Deliver
+        (Assembly : in Assembly_Type; Number : out Integer)
+      is
+      begin
+         Requested := Requested + 1.0;
+         if Can_Deliver (Assembly) then
+            Fulfilled := Fulfilled + 1.0;
+            Put_Line
+              (ESC & "[91m" & "B: Delivered assembly " &
+               Assembly_Name (Assembly) & " number " &
+               Integer'Image (Assembly_Number (Assembly)) & ESC & "[0m");
+            for W in Producer_Type loop
+               Storage (W) := Storage (W) - Assembly_Content (Assembly, W);
+               In_Storage  := In_Storage - Assembly_Content (Assembly, W);
+            end loop;
+            Number                     := Assembly_Number (Assembly);
+            Assembly_Number (Assembly) := Assembly_Number (Assembly) + 1;
+         else
+            Denied := Denied + 1.0;
+            Put_Line
+              (ESC & "[91m" & "B: Lacking products for assembly " &
+               Assembly_Name (Assembly) & ESC & "[0m");
+            Number := 0;
+         end if;
+         Storage_Contents;
+      end Handle_Deliver;
 
    begin
       Put_Line (ESC & "[91m" & "B: Buffer started" & ESC & "[0m");
       Setup_Variables;
       loop
+         -- Handle all priority tasks
+         loop
+            select
+               accept Take (Product : in Producer_Type; Number : in Integer) do
+                  Handle_Take (Product, Number);
+               end Take;
+            or
+               accept Quarrel_In_Storage (Worker_Number : Furious_Worker_Type)
+               do
+                  Throwing_Products (Worker_Number);
+               end Quarrel_In_Storage;
+            else
+               exit;
+            end select;
+         end loop;
+         -- Handle one of any tasks
          select
-            accept Take (Product : in Producer_Type; Number : in Integer) do
-               if Can_Accept (Product) then
-                  Put_Line
-                    (ESC & "[91m" & "B: Accepted product " &
-                     Product_Name (Product) & " number " &
-                     Integer'Image (Number) & ESC & "[0m");
-                  Storage (Product) := Storage (Product) + 1;
-                  In_Storage        := In_Storage + 1;
-               else
-                  Put_Line
-                    (ESC & "[91m" & "B: Rejected product " &
-                     Product_Name (Product) & " number " &
-                     Integer'Image (Number) & ESC & "[0m");
-               end if;
-            end Take;
-            Storage_Contents;
-         or
             accept Deliver (Assembly : in Assembly_Type; Number : out Integer)
             do
-               Requested := Requested + 1.0;
-               if Can_Deliver (Assembly) then
-                  Fulfilled := Fulfilled + 1.0;
-                  Put_Line
-                    (ESC & "[91m" & "B: Delivered assembly " &
-                     Assembly_Name (Assembly) & " number " &
-                     Integer'Image (Assembly_Number (Assembly)) & ESC & "[0m");
-                  for W in Producer_Type loop
-                     Storage (W) :=
-                       Storage (W) - Assembly_Content (Assembly, W);
-                     In_Storage := In_Storage - Assembly_Content (Assembly, W);
-                  end loop;
-                  Number                     := Assembly_Number (Assembly);
-                  Assembly_Number (Assembly) := Assembly_Number (Assembly) + 1;
-               else
-                  Denied := Denied + 1.0;
-                  Put_Line
-                    (ESC & "[91m" & "B: Lacking products for assembly " &
-                     Assembly_Name (Assembly) & ESC & "[0m");
-                  Number := 0;
-               end if;
+               Handle_Deliver (Assembly, Number);
             end Deliver;
-            Storage_Contents;
+         or
+            accept Take (Product : in Producer_Type; Number : in Integer) do
+               Handle_Take (Product, Number);
+            end Take;
          or
             accept Quarrel_In_Storage (Worker_Number : Furious_Worker_Type) do
-               Throwing_Products;
-               Put_Line
-                 (ESC & "[91m" & "B: After " &
-                  Furious_Worker_Name (Worker_Number) &
-                  "'s fury, we lost half of the products in the storage" &
-                  ESC & "[0m");
+               Throwing_Products (Worker_Number);
             end Quarrel_In_Storage;
-            Storage_Contents;
          end select;
       end loop;
    end Buffer;
@@ -474,6 +498,6 @@ begin
       K (J).Start (J, 12);
    end loop;
    for K in 1 .. Number_Of_Furious_Workers loop
-      W (K).Start (K, 8);
+      W (K).Start (K, 1);
    end loop;
 end Simulation;
